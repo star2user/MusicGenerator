@@ -34,13 +34,13 @@ class MusicGenerator():
         self.generator.load_weights(os.path.join('filename'))
 
     def Generate(self):
-        chord_noise = np.random.normal[0, 1, (1, self.z_dim)]
-        style_noise = np.random.normal[0, 1, (1, self.z_dim)]
-        melody_noise = np.random.normal[0, 1, (1, self.z_dim)]
-        groove_noise = np.random.normal[0, 1, (1, self.z_dim)]
+        chords_noise = np.random.normal(0, 1, (1, self.z_dim))
+        style_noise = np.random.normal(0, 1, (1, self.z_dim))
+        melody_noise = np.random.normal(0, 1, (1, self.n_tracks, self.z_dim))
+        groove_noise = np.random.normal(0, 1, (1, self.n_tracks, self.z_dim))
 
 
-        score = self.generator.predict([chord_noise, style_noise, melody_noise, groove_noise])
+        score = self.generator.predict([chords_noise, style_noise, melody_noise, groove_noise])
         np.argmax(score[0, 0, 0:4, :, 3], axis=1)
         score[0, 0, 0:4, 60, 3] = 0.02347812
 
