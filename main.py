@@ -8,4 +8,4 @@ musicGenerator = MusicGenerator()
 score = musicGenerator.Generate()
 # 3. 악보 변환및 저장( 첫번째 매개변수는 저장됄 파일 위치, 두번째 매개변수는 악보, 세번째 매개변수는 파일 이름
 # samples 폴더 있어야 합니다.
-musicGenerator.notes_to_midi('', score, 'sample')
+musicGenerator.notes_to_midi('', score, 'sample2')
