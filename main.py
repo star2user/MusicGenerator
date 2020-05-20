@@ -1,10 +1,8 @@
 from MusicGenerator import MusicGenerator
 from music21 import *
 from music21.converter.subConverters import ConverterLilypond
-from keras.models import load_model
-import numpy as np
 
-#1. MusicGenerator 생성, generator.h5파일이 같은 폴더안에 있어야함
+#1. MusicGenerator 생성, weights-g.h5파일이 같은 폴더안에 있어야함
 musicGenerator = MusicGenerator()
 # 2. 악보 생성
 score = musicGenerator.Generate()
@@ -12,5 +10,8 @@ score = musicGenerator.Generate()
 # samples 폴더 있어야 합니다.
 
 run_folder = 'samples'
-#musicGenerator.notes_to_midi(run_folder, score, 'sample')
+musicGenerator.notes_to_midi(run_folder, score, 'sample')
 musicGenerator.notes_to_png(run_folder, score, 'sample')
+
+
+

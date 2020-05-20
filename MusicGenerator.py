@@ -134,63 +134,130 @@ class MusicGenerator():
         melody_noise = np.random.normal(0, 1, (n, self.n_tracks, self.z_dim))
         groove_noise = np.random.normal(0, 1, (n, self.n_tracks, self.z_dim))
 
-
         score = self.generator.predict([chords_noise, style_noise, melody_noise, groove_noise])
 
         return score
 
+
+    def notes_to_png(self, run_folder, score, filename): # (batch_size, 4, 96, 84, 1) 의 형태
+        scoreStream = self.notes_to_stream(score)
+        scoreStream.write('lily.png', fp=os.path.join(run_folder, "{}.png".format(filename)))
+
     # run_foler = 저장 위치(현재 폴더에 저장시 ''로 입력)
     # score = 변환전 악보
     # filname
-    def notes_to_midi(self, run_folder, output, filename):
-        score = self.TrimScore(output, 16)
+    def notes_to_midi(self, run_folder, score, filename):
+        scoreStream = self.notes_to_stream(score)
+        scoreStream.write('midi', fp=os.path.join(run_folder, "{}.midi".format(filename)))
 
-        # 배치를 미디로 변환
-        binarized = score > -0.5  # 1. 이진화
-        # 1. reshpae (마디 부분합치기)
-        score = binarized.reshape(-1, binarized.shape[1] * binarized.shape[2], binarized.shape[3],
-                                  binarized.shape[4])  # 2. 마디 합치기
-        # 2. pad설정
-        pad_width = ((0, 0), (0, 0), (24, 20), (0, 0))
-        # 3. pad적용
-        score = np.pad(score, pad_width, 'constant')  # 3. 패드 적용
-        # 4. reshape(-1, pitches, Track)
-        score = score.reshape(-1, score.shape[2], score.shape[3])  # 4. reshape ( -1, 피치 수, 트랙)
-        # 5. multitrack 생성
-        multitrack = Multitrack(beat_resolution=24, tempo=120)  # 4.4. Multitrack 생성
-        track = Track(score[..., 0])
-        multitrack.append_track(track)
+    def notes_to_stream(self, score):
+        scoreCompressed = score[:, :, 0:95:6, :, :]  # ( batch, 4, 16, 84, 1)
+        scoreCompressed = scoreCompressed > -0.5
 
-        if run_folder != None:
-            multitrack.write('{}/{}.mid'.format(run_folder, filename))
-        else:
-            multitrack.write('{}.mid'.format('sample'))
+        # 피치번호 37~60, 12~37으로 나눈다.
+        track1 = scoreCompressed[:, :, :, 37:60, :]  # (4, 16, 23, 1) 낮은 음자리표 트랙
+        track2 = scoreCompressed[:, :, :, 12:37, :]  # (4, 16, 25, 1) 높은 음자리표 트랙
+        # 각각 마디와 타임스텝을 합친다. (96, 84, 1)
+        track1 = track1.reshape(track1.shape[0] * track1.shape[1] * track1.shape[2], track1.shape[3])  # (96, 25)
+        track2 = track2.reshape(track2.shape[0] * track2.shape[1] * track2.shape[2], track2.shape[3])  # ( 96, 23)
 
+        scoreObject = note.Note()
+        upPitch = 60
+        dur = 0
+        # Stream을 만든다.
+        scoreStream = stream.Score()
+        scoreStream.append(tempo.MetronomeMark(number=120))
+        # 트랙1을 만든다.
+        scoreTrack1 = stream.Part()
 
-    # notes_to_png
-    # run_folder : 파일 경로
-    # score : MusicGenerator의 Generate함수 출력 값
-    # filename : 파일 이름
+        # 1.타임 스텝만큼 반복한다. (96, 84)
+        lastIndexes = np.array(-1)
+        lengthOfTimestep = len(track1)  # 96
+        for i in range(lengthOfTimestep):
+            #  1.1. i번째 타임스텝의 피치들을 가져온다.
+            pitches = track1[i]  # (25)
+            #  1.2. 0보다 큰 피치들의 인덱스를 구한다.
+            indexes = (np.where(pitches > 0))[0]  # 0보다 큰 수들의 인덱스 튜플형태로 나온다
+            isEqual = np.array_equal(lastIndexes, indexes)
 
-    # 필수 사전처리 항목 : lilypond  C:\에 설치 되어있어야함
+            if (isEqual == False or i % 16 == 0) and i > 0:  # 1.3. 이전 인덱스들과 같지 않거나 4의 배수의 타임스텝이면
+                lengthOfIndexs = len(lastIndexes)  # 1.3.2 이전 인덱스 개수를 구한다.
+                if lengthOfIndexs == 0:  # 1.3.3 인덱스 개수가 0개이면 쉼표를 만든다.
+                    scoreObject = note.Rest()
+                elif lengthOfIndexs == 1:  # 1.3.4 인덱스 개수가 1개이면 음표를 만든다.
+                    scoreObject = note.Note(lastIndexes[0] + upPitch)
+                else:  # 1.3.5 인덱스 개수가 2개이상이면 화음을 만든다.
+                    scoreObject = chord.Chord()
+                    for j in range(lengthOfIndexs):
+                        scoreObject.add(note.Note(lastIndexes[j] + upPitch))
+                scoreObject.duration = duration.Duration(dur)
+                scoreTrack1.append(scoreObject)  # 1.3.1 만든 객체를 트랙의 추가한다.
+                dur = 0
 
-    def notes_to_png(self, run_folder, output, filename):
-        environment.set("lilypondPath", r"C:\LilyPond\usr\bin\lilypond.exe")
-        # 1. midi 생성
-        self.notes_to_midi(run_folder, output, filename)
-        #self.notes_to_midi(run_folder, score, filename)
-        # 2. midi 를 stream형태의 score로
-        #score = converter.parse(os.path.join(run_folder, "{}.mid".format(filename)))
-        mf= midi.MidiFile()
-        mf.open('samples/Hanon1.mid', attrib='rb')
-        mf.read()
-        mf.close()
-        print(len(mf.tracks))
+            lastIndexes = indexes
+            dur += 0.25  # #  1.4. 음의길이를 센다.
 
-        streamScore = midi.translate.midiFileToStream(mf)
-        # 3. score를 lilypond를 통해 이미지로 변경
-        streamScore.write('lily.png', fp=os.path.join(run_folder, "{}.png".format(filename)))
-        mf.close()
+        lengthOfIndexs = len(lastIndexes)  # 1.3.2 인덱스 개수를 구한다.
+        if lengthOfIndexs == 0:  # 1.3.3 인덱스 개수가 0개이면 쉼표를 만든다.
+            scoreObject = note.Rest()
+        elif lengthOfIndexs == 1:  # 1.3.4 인덱스 개수가 1개이면 음표를 만든다.
+            scoreObject = note.Note(lastIndexes[0] + upPitch)
+        else:  # 1.3.5 인덱스 개수가 2개이상이면 화음을 만든다.
+            scoreObject = chord.Chord()
+            for j in range(lengthOfIndexs):
+                scoreObject.add(note.Note(lastIndexes[j] + upPitch))
+        scoreObject.duration = duration.Duration(dur)
+        scoreTrack1.append(scoreObject)  # 1.3.1 만든 객체를 트랙의 추가한다.
+
+        scoreStream.append(scoreTrack1)
+
+        upPitch = 35
+        dur = 0
+        # 트랙 2를 추가한다.
+        scoreTrack2 = stream.Part()
+        scoreTrack2.clef = clef.BassClef()
+
+        lastIndexes = np.array(-1)
+        lengthOfTimestep = len(track2)  # 96
+        for i in range(lengthOfTimestep):
+            #  1.1. i번째 타임스텝의 피치들을 가져온다.
+            pitches = track2[i]  # (23)
+            #  1.2. 0보다 큰 피치들의 인덱스를 구한다.
+            indexes = (np.where(pitches > 0))[0]  # 0보다 큰 수들의 인덱스 튜플형태로 나온다
+            isEqual = np.array_equal(lastIndexes, indexes)
+
+            if (isEqual == False or i % 16 == 0) and i > 0:  # 1.3. 이전 인덱스들과 같지 않거나 4의 배수의 타임스텝이면
+                lengthOfIndexs = len(lastIndexes)  # 1.3.2 이전 인덱스 개수를 구한다.
+                if lengthOfIndexs == 0:  # 1.3.3 인덱스 개수가 0개이면 쉼표를 만든다.
+                    scoreObject = note.Rest()
+                elif lengthOfIndexs == 1:  # 1.3.4 인덱스 개수가 1개이면 음표를 만든다.
+                    scoreObject = note.Note(lastIndexes[0] + upPitch)
+                else:  # 1.3.5 인덱스 개수가 2개이상이면 화음을 만든다.
+                    scoreObject = chord.Chord()
+                    for j in range(lengthOfIndexs):
+                        scoreObject.add(note.Note(lastIndexes[j] + upPitch))
+                scoreObject.duration = duration.Duration(dur)
+                scoreTrack2.append(scoreObject)  # 1.3.1 만든 객체를 트랙의 추가한다.
+                dur = 0
+
+            lastIndexes = indexes
+            dur += 0.25  # #  1.4. 음의길이를 센다.
+
+        lengthOfIndexs = len(lastIndexes)  # 1.3.2 인덱스 개수를 구한다.
+        if lengthOfIndexs == 0:  # 1.3.3 인덱스 개수가 0개이면 쉼표를 만든다.
+            scoreObject = note.Rest()
+        elif lengthOfIndexs == 1:  # 1.3.4 인덱스 개수가 1개이면 음표를 만든다.
+            scoreObject = note.Note(lastIndexes[0] + upPitch)
+        else:  # 1.3.5 인덱스 개수가 2개이상이면 화음을 만든다.
+            scoreObject = chord.Chord()
+            for j in range(lengthOfIndexs):
+                scoreObject.add(note.Note(lastIndexes[j] + upPitch))
+        scoreObject.duration = duration.Duration(dur)
+        scoreTrack2.append(scoreObject)  # 1.3.1 만든 객체를 트랙의 추가한다.
+        scoreStream.append(scoreTrack2)
+
+        return scoreStream
+
 
     def TrimScore(self, score, leastNoteBeat):
         # score: (batchSize, 4, 96, 84 1) 형태의 배열
