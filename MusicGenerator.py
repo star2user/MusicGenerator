@@ -128,7 +128,7 @@ class MusicGenerator():
         self.generator = Model([chords_input, style_input, melody_input, groove_input], generator_output)
 
     def Generate(self):
-        n = 1
+        n = 2
         chords_noise = np.random.normal(0, 1, (n, self.z_dim))
         style_noise = np.random.normal(0, 1, (n, self.z_dim))
         melody_noise = np.random.normal(0, 1, (n, self.n_tracks, self.z_dim))
