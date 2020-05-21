@@ -21,7 +21,7 @@ class MusicGenerator():
     def __init__(self):
         self.z_dim = 32
         self.n_tracks = 1
-        self.n_bars = 4
+        self.n_bars = 2
         self.n_steps_per_bar = 96
         self.n_pitches = 84
 
@@ -128,7 +128,7 @@ class MusicGenerator():
         self.generator = Model([chords_input, style_input, melody_input, groove_input], generator_output)
 
     def Generate(self):
-        n = 2
+        n = 4
         chords_noise = np.random.normal(0, 1, (n, self.z_dim))
         style_noise = np.random.normal(0, 1, (n, self.z_dim))
         melody_noise = np.random.normal(0, 1, (n, self.n_tracks, self.z_dim))
@@ -152,11 +152,11 @@ class MusicGenerator():
 
     def notes_to_stream(self, score):
         scoreCompressed = score[:, :, 0:95:6, :, :]  # ( batch, 4, 16, 84, 1)
-        scoreCompressed = scoreCompressed > -0.5
+        scoreCompressed = scoreCompressed > 0 # 이진화 처리
 
         # 피치번호 37~60, 12~37으로 나눈다.
-        track1 = scoreCompressed[:, :, :, 37:60, :]  # (4, 16, 23, 1) 낮은 음자리표 트랙
-        track2 = scoreCompressed[:, :, :, 12:37, :]  # (4, 16, 25, 1) 높은 음자리표 트랙
+        track1 = scoreCompressed[:, :, :, 37:83, :]  # (4, 16, 23, 1) 낮은 음자리표 트랙
+        track2 = scoreCompressed[:, :, :, 0:37, :]  # (4, 16, 25, 1) 높은 음자리표 트랙
         # 각각 마디와 타임스텝을 합친다. (96, 84, 1)
         track1 = track1.reshape(track1.shape[0] * track1.shape[1] * track1.shape[2], track1.shape[3])  # (96, 25)
         track2 = track2.reshape(track2.shape[0] * track2.shape[1] * track2.shape[2], track2.shape[3])  # ( 96, 23)
@@ -211,7 +211,7 @@ class MusicGenerator():
 
         scoreStream.append(scoreTrack1)
 
-        upPitch = 35
+        upPitch = 23
         dur = 0
         # 트랙 2를 추가한다.
         scoreTrack2 = stream.Part()
