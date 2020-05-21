@@ -10,8 +10,8 @@ score = musicGenerator.Generate()
 # samples 폴더 있어야 합니다.
 
 run_folder = 'samples'
-musicGenerator.notes_to_midi(run_folder, score, 'sample')
-musicGenerator.notes_to_png(run_folder, score, 'sample')
+musicGenerator.notes_to_midi(run_folder, score, 'classicSample')
+musicGenerator.notes_to_png(run_folder, score, 'classicSample')
 
 
 
