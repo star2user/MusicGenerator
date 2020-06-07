@@ -151,7 +151,8 @@ class MusicGenerator():
         scoreStream.write('midi', fp=os.path.join(run_folder, "{}.midi".format(filename)))
 
     def notes_to_stream(self, score):
-        scoreCompressed = score[:, :, 0:95:6, :, :]  # ( batch, 4, 16, 84, 1)
+        scoreCompressed = self.TrimScore(score, 8);
+        scoreCompressed = scoreCompressed[:, :, 0:95:6, :, :]  # ( batch, 4, 16, 84, 1)
         scoreCompressed = scoreCompressed > 0.5 # 이진화 처리
 
         # 피치번호 37~60, 12~37으로 나눈다.
