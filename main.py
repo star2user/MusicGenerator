@@ -6,12 +6,19 @@ from music21.converter.subConverters import ConverterLilypond
 musicGenerator = MusicGenerator()
 # 2. 악보 생성
 score = musicGenerator.Generate()
+score1 = musicGenerator.Generate()
+score2 = musicGenerator.Generate()
 # 3. 악보 변환및 저장( 첫번째 매개변수는 저장됄 파일 위치, 두번째 매개변수는 악보, 세번째 매개변수는 파일 이름
 # samples 폴더 있어야 합니다.
 
 run_folder = 'samples'
-musicGenerator.notes_to_midi(run_folder, score, 'classicSample')
-musicGenerator.notes_to_png(run_folder, score, 'classicSample')
+musicGenerator.notes_to_midi(run_folder, score, 'classicSample1')
+musicGenerator.notes_to_png(run_folder, score, 'classicSample1')
 
+musicGenerator.notes_to_midi(run_folder, score1, 'classicSample2')
+musicGenerator.notes_to_png(run_folder, score1, 'classicSample2')
+
+musicGenerator.notes_to_midi(run_folder, score2, 'classicSample3')
+musicGenerator.notes_to_png(run_folder, score2, 'classicSample3')
 
 
