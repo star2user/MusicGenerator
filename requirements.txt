@@ -1,7 +1,7 @@
 tensorboard==2.0.2
 tensorflow==2.0.0
 tensorflow-estimator==2.0.1
-numpy==1.16.1
+numpy==1.22.0
 music21==5.7.2
 Keras==2.3.1
 Keras-Applications==1.0.8
